@@ -14,7 +14,13 @@ def get_data_from_db():
         query = "SELECT * FROM Final_cleaned"
         df = conn.execute(query).fetchdf()
         conn.close()
-        df['Year'] = df['Year'].astype(int)  # Явное преобразование в целочисленный тип
+        
+        # Удаляем строки с NaN в столбце 'Year'
+        df = df.dropna(subset=['Year'])
+        
+        # Преобразуем 'Year' в целые числа
+        df['Year'] = df['Year'].astype(int)
+        
         return df
     except duckdb.CatalogException as e:
         print(f"Ошибка при доступе к базе данных: {e}")
@@ -46,6 +52,13 @@ dark_colors = {
     'accent': '#FF453A'
 }
 
+if df.empty:
+    print("Предупреждение: DataFrame пуст. Приложение может работать некорректно.")
+    min_year, max_year = 2000, 2023  # Задаем значения по умолчанию
+else:
+    min_year = int(df['Year'].min())
+    max_year = int(df['Year'].max())
+
 app.layout = html.Div([
     html.Div([
         html.H1("Глобальные телекоммуникационные тренды", 
@@ -68,10 +81,10 @@ app.layout = html.Div([
                 html.Div([
                     dcc.RangeSlider(
                         id='year-slider',
-                        min=int(df['Year'].min()),
-                        max=int(df['Year'].max()),
-                        value=[2000, int(df['Year'].max())],
-                        marks={str(int(year)): str(int(year)) for year in range(int(df['Year'].min()), int(df['Year'].max())+1, 5)},
+                        min=min_year,
+                        max=max_year,
+                        value=[2000, max_year],
+                        marks={str(year): str(year) for year in range(min_year, max_year+1, 5)},
                         step=None,
                         className='range-slider'
                     ),
