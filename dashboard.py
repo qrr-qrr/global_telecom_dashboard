@@ -14,6 +14,7 @@ def get_data_from_db():
         query = "SELECT * FROM Final_cleaned"
         df = conn.execute(query).fetchdf()
         conn.close()
+        df['Year'] = df['Year'].astype(int)
         return df
     except duckdb.CatalogException as e:
         print(f"Ошибка при доступе к базе данных: {e}")
@@ -24,7 +25,6 @@ app = dash.Dash(__name__, external_stylesheets=[
 ])
 
 df = get_data_from_db()
-df['Year'] = df['Year'].astype(int)
 
 colors = {
     'background': '#E6F3FF',
@@ -45,114 +45,6 @@ dark_colors = {
     'tertiary': '#3A3A3C',
     'accent': '#FF453A'
 }
-
-app.index_string = '''
-<!DOCTYPE html>
-<html>
-    <head>
-        {%metas%}
-        <title>{%title%}</title>
-        {%favicon%}
-        {%css%}
-        <style>
-            body {
-                font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-                background-color: ''' + colors['background'] + ''';
-                color: ''' + colors['text'] + ''';
-                margin: 0;
-                padding: 20px;
-                transition: all 0.3s ease;
-            }
-            .container {
-                max-width: 1200px;
-                margin: 0 auto;
-            }
-            .card {
-                background-color: ''' + colors['card_background'] + ''';
-                border-radius: 12px;
-                padding: 20px;
-                margin-bottom: 20px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                transition: all 0.3s ease;
-            }
-            .card:hover {
-                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-                transform: translateY(-5px);
-            }
-            .menu-item {
-                background-color: ''' + colors['tertiary'] + ''';
-                color: ''' + colors['text'] + ''';
-                padding: 12px 16px;
-                border-radius: 8px;
-                margin-right: 10px;
-                cursor: pointer;
-                transition: all 0.3s ease;
-            }
-            .menu-item:hover, .menu-item.active {
-                background-color: ''' + colors['primary'] + ''';
-                color: ''' + colors['card_background'] + ''';
-                transform: translateY(-2px);
-            }
-            .button {
-                background-color: ''' + colors['primary'] + ''';
-                color: ''' + colors['card_background'] + ''';
-                border: none;
-                padding: 10px 20px;
-                border-radius: 20px;
-                font-weight: 500;
-                cursor: pointer;
-                transition: all 0.3s ease;
-            }
-            .button:hover {
-                background-color: ''' + colors['accent'] + ''';
-                transform: translateY(-2px);
-            }
-            .dropdown .Select-control {
-                border: 1px solid ''' + colors['tertiary'] + ''';
-                border-radius: 8px;
-                transition: all 0.3s ease;
-            }
-            .dropdown .Select-control:hover {
-                box-shadow: 0 0 0 2px ''' + colors['primary'] + ''';
-            }
-            .range-slider .rc-slider-track {
-                background-color: ''' + colors['primary'] + ''';
-            }
-            .range-slider .rc-slider-handle {
-                border-color: ''' + colors['primary'] + ''';
-                background-color: ''' + colors['card_background'] + ''';
-            }
-            .summary-card {
-                background-color: ''' + colors['primary'] + ''';
-                color: ''' + colors['card_background'] + ''';
-                padding: 15px;
-                border-radius: 8px;
-                margin-bottom: 20px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                transition: all 0.3s ease;
-            }
-            .summary-card:hover {
-                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-                transform: translateY(-5px);
-            }
-            .authors {
-                text-align: center;
-                font-style: italic;
-                margin-top: 20px;
-                color: ''' + colors['secondary'] + ''';
-            }
-        </style>
-    </head>
-    <body>
-        {%app_entry%}
-        <footer>
-            {%config%}
-            {%scripts%}
-            {%renderer%}
-        </footer>
-    </body>
-</html>
-'''
 
 app.layout = html.Div([
     html.Div([
@@ -376,4 +268,3 @@ if __name__ == '__main__':
     app.run_server(debug=True)
 
 server = app.server
-    
