@@ -360,3 +360,5 @@ def update_menu_item_style(dark_theme):
 
 if __name__ == '__main__':
     app.run_server(debug=True)
+
+server = app.server
