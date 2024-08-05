@@ -14,7 +14,7 @@ def get_data_from_db():
         query = "SELECT * FROM Final_cleaned"
         df = conn.execute(query).fetchdf()
         conn.close()
-        df['Year'] = df['Year'].astype(int)
+        df['Year'] = df['Year'].astype(int)  # Явное преобразование в целочисленный тип
         return df
     except duckdb.CatalogException as e:
         print(f"Ошибка при доступе к базе данных: {e}")
@@ -68,10 +68,10 @@ app.layout = html.Div([
                 html.Div([
                     dcc.RangeSlider(
                         id='year-slider',
-                        min=df['Year'].min(),
-                        max=df['Year'].max(),
-                        value=[2000, df['Year'].max()],
-                        marks={str(year): str(year) for year in range(df['Year'].min(), df['Year'].max()+1, 5)},
+                        min=int(df['Year'].min()),
+                        max=int(df['Year'].max()),
+                        value=[2000, int(df['Year'].max())],
+                        marks={str(int(year)): str(int(year)) for year in range(int(df['Year'].min()), int(df['Year'].max())+1, 5)},
                         step=None,
                         className='range-slider'
                     ),
