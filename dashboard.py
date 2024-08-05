@@ -11,20 +11,28 @@ import dash_daq as daq
 def get_data_from_db():
     try:
         conn = duckdb.connect('Final_cleaned.db')
-        query = "SELECT * FROM Final_cleaned"
+        tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        
+        if not tables:
+            print("В базе данных нет таблиц.")
+            return pd.DataFrame()
+        
+        table_name = tables[0][0]
+        print(f"Используется таблица: {table_name}")
+        
+        query = f"SELECT * FROM {table_name}"
         df = conn.execute(query).fetchdf()
+        
         conn.close()
         
-        # Удаляем строки с NaN в столбце 'Year'
-        df = df.dropna(subset=['Year'])
-        
-        # Преобразуем 'Year' в целые числа
-        df['Year'] = df['Year'].astype(int)
+        if 'Year' in df.columns:
+            df = df.dropna(subset=['Year'])
+            df['Year'] = df['Year'].astype(int)
         
         return df
     except duckdb.CatalogException as e:
         print(f"Ошибка при доступе к базе данных: {e}")
-        return pd.DataFrame(columns=['Entity', 'Year', 'Internet_Users_Percent', 'Cellular_Subscription', 'Broadband_Subscription'])
+        return pd.DataFrame()
 
 app = dash.Dash(__name__, external_stylesheets=[
     'https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600&display=swap'
@@ -54,10 +62,10 @@ dark_colors = {
 
 if df.empty:
     print("Предупреждение: DataFrame пуст. Приложение может работать некорректно.")
-    min_year, max_year = 2000, 2023  # Задаем значения по умолчанию
+    min_year, max_year = 2000, 2023
 else:
-    min_year = int(df['Year'].min())
-    max_year = int(df['Year'].max())
+    min_year = int(df['Year'].min()) if 'Year' in df.columns else 2000
+    max_year = int(df['Year'].max()) if 'Year' in df.columns else 2023
 
 app.layout = html.Div([
     html.Div([
@@ -69,8 +77,8 @@ app.layout = html.Div([
                 html.Label("Выберите страны:", style={'marginBottom': '10px', 'fontWeight': '500'}),
                 dcc.Dropdown(
                     id='country-dropdown',
-                    options=[{'label': country, 'value': country} for country in df['Entity'].unique()],
-                    value=['Afghanistan'],
+                    options=[{'label': country, 'value': country} for country in df['Entity'].unique()] if 'Entity' in df.columns else [],
+                    value=['Afghanistan'] if 'Entity' in df.columns and 'Afghanistan' in df['Entity'].unique() else [],
                     multi=True,
                     className='dropdown'
                 ),
@@ -83,7 +91,7 @@ app.layout = html.Div([
                         id='year-slider',
                         min=min_year,
                         max=max_year,
-                        value=[2000, max_year],
+                        value=[min_year, max_year],
                         marks={str(year): str(year) for year in range(min_year, max_year+1, 5)},
                         step=None,
                         className='range-slider'
@@ -136,12 +144,15 @@ app.layout = html.Div([
      Input('year-slider', 'value')]
 )
 def update_summary_stats(selected_countries, year_range):
+    if df.empty or 'Entity' not in df.columns or 'Year' not in df.columns:
+        return html.Div("Нет данных для отображения")
+
     filtered_df = df[(df['Entity'].isin(selected_countries)) & 
                      (df['Year'].between(year_range[0], year_range[1]))]
     
-    avg_internet_users = filtered_df['Internet_Users_Percent'].mean()
-    avg_mobile_subs = filtered_df['Cellular_Subscription'].mean()
-    avg_broadband_subs = filtered_df['Broadband_Subscription'].mean()
+    avg_internet_users = filtered_df['Internet_Users_Percent'].mean() if 'Internet_Users_Percent' in filtered_df.columns else 0
+    avg_mobile_subs = filtered_df['Cellular_Subscription'].mean() if 'Cellular_Subscription' in filtered_df.columns else 0
+    avg_broadband_subs = filtered_df['Broadband_Subscription'].mean() if 'Broadband_Subscription' in filtered_df.columns else 0
     
     return html.Div([
         html.H4("Сводная статистика", style={'color': colors['card_background'], 'marginBottom': '10px'}),
@@ -166,6 +177,9 @@ def update_content(*args):
     selected_countries = args[-2]
     year_range = args[-1]
     
+    if df.empty or 'Entity' not in df.columns or 'Year' not in df.columns:
+        return html.Div("Нет данных для отображения")
+
     filtered_df = df[(df['Entity'].isin(selected_countries)) & 
                      (df['Year'].between(year_range[0], year_range[1]))]
 
@@ -275,7 +289,8 @@ def update_menu_item_style(dark_theme):
 def refresh_data(n_clicks):
     if n_clicks is None:
         raise dash.exceptions.PreventUpdate
-    return get_data_from_db().to_json(date_format='iso', orient='split')
+    df = get_data_from_db()
+    return df.to_json(date_format='iso', orient='split')
 
 if __name__ == '__main__':
     app.run_server(debug=True)
