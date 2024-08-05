@@ -9,39 +9,21 @@ from dash_iconify import DashIconify
 import dash_daq as daq
 
 def get_data_from_db():
-    try:
-        conn = duckdb.connect('Final_cleaned.db')
-        tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
-        
-        if not tables:
-            print("В базе данных нет таблиц.")
-            return pd.DataFrame()
-        
-        table_name = tables[0][0]
-        print(f"Используется таблица: {table_name}")
-        
-        query = f"SELECT * FROM {table_name}"
-        df = conn.execute(query).fetchdf()
-        
-        conn.close()
-        
-        if 'Year' in df.columns:
-            df = df.dropna(subset=['Year'])
-            df['Year'] = df['Year'].astype(int)
-        
-        return df
-    except duckdb.CatalogException as e:
-        print(f"Ошибка при доступе к базе данных: {e}")
-        return pd.DataFrame()
+    conn = duckdb.connect('my.db')
+    query = "SELECT * FROM Final_cleaned"
+    df = conn.execute(query).fetchdf()
+    conn.close()
+    return df
 
 app = dash.Dash(__name__, external_stylesheets=[
     'https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600&display=swap'
 ])
 
 df = get_data_from_db()
+df['Year'] = df['Year'].astype(int)
 
 colors = {
-    'background': '#E6F3FF',
+    'background': '#E6F3FF',  # Светло-голубой фон
     'card_background': '#FFFFFF',
     'text': '#1D1D1F',
     'primary': '#0071E3',
@@ -60,12 +42,113 @@ dark_colors = {
     'accent': '#FF453A'
 }
 
-if df.empty:
-    print("Предупреждение: DataFrame пуст. Приложение может работать некорректно.")
-    min_year, max_year = 2000, 2023
-else:
-    min_year = int(df['Year'].min()) if 'Year' in df.columns else 2000
-    max_year = int(df['Year'].max()) if 'Year' in df.columns else 2023
+app.index_string = '''
+<!DOCTYPE html>
+<html>
+    <head>
+        {%metas%}
+        <title>{%title%}</title>
+        {%favicon%}
+        {%css%}
+        <style>
+            body {
+                font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+                background-color: ''' + colors['background'] + ''';
+                color: ''' + colors['text'] + ''';
+                margin: 0;
+                padding: 20px;
+                transition: all 0.3s ease;
+            }
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+            .card {
+                background-color: ''' + colors['card_background'] + ''';
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 20px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                transition: all 0.3s ease;
+            }
+            .card:hover {
+                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+                transform: translateY(-5px);
+            }
+            .menu-item {
+                background-color: ''' + colors['tertiary'] + ''';
+                color: ''' + colors['text'] + ''';
+                padding: 12px 16px;
+                border-radius: 8px;
+                margin-right: 10px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+            .menu-item:hover, .menu-item.active {
+                background-color: ''' + colors['primary'] + ''';
+                color: ''' + colors['card_background'] + ''';
+                transform: translateY(-2px);
+            }
+            .button {
+                background-color: ''' + colors['primary'] + ''';
+                color: ''' + colors['card_background'] + ''';
+                border: none;
+                padding: 10px 20px;
+                border-radius: 20px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+            .button:hover {
+                background-color: ''' + colors['accent'] + ''';
+                transform: translateY(-2px);
+            }
+            .dropdown .Select-control {
+                border: 1px solid ''' + colors['tertiary'] + ''';
+                border-radius: 8px;
+                transition: all 0.3s ease;
+            }
+            .dropdown .Select-control:hover {
+                box-shadow: 0 0 0 2px ''' + colors['primary'] + ''';
+            }
+            .range-slider .rc-slider-track {
+                background-color: ''' + colors['primary'] + ''';
+            }
+            .range-slider .rc-slider-handle {
+                border-color: ''' + colors['primary'] + ''';
+                background-color: ''' + colors['card_background'] + ''';
+            }
+            .summary-card {
+                background-color: ''' + colors['primary'] + ''';
+                color: ''' + colors['card_background'] + ''';
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                transition: all 0.3s ease;
+            }
+            .summary-card:hover {
+                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+                transform: translateY(-5px);
+            }
+            .authors {
+                text-align: center;
+                font-style: italic;
+                margin-top: 20px;
+                color: ''' + colors['secondary'] + ''';
+            }
+        </style>
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+'''
 
 app.layout = html.Div([
     html.Div([
@@ -77,8 +160,8 @@ app.layout = html.Div([
                 html.Label("Выберите страны:", style={'marginBottom': '10px', 'fontWeight': '500'}),
                 dcc.Dropdown(
                     id='country-dropdown',
-                    options=[{'label': country, 'value': country} for country in df['Entity'].unique()] if 'Entity' in df.columns else [],
-                    value=['Afghanistan'] if 'Entity' in df.columns and 'Afghanistan' in df['Entity'].unique() else [],
+                    options=[{'label': country, 'value': country} for country in df['Entity'].unique()],
+                    value=['Afghanistan'],
                     multi=True,
                     className='dropdown'
                 ),
@@ -89,10 +172,10 @@ app.layout = html.Div([
                 html.Div([
                     dcc.RangeSlider(
                         id='year-slider',
-                        min=min_year,
-                        max=max_year,
-                        value=[min_year, max_year],
-                        marks={str(year): str(year) for year in range(min_year, max_year+1, 5)},
+                        min=df['Year'].min(),
+                        max=df['Year'].max(),
+                        value=[2000, df['Year'].max()],
+                        marks={str(year): str(year) for year in range(df['Year'].min(), df['Year'].max()+1, 5)},
                         step=None,
                         className='range-slider'
                     ),
@@ -144,15 +227,12 @@ app.layout = html.Div([
      Input('year-slider', 'value')]
 )
 def update_summary_stats(selected_countries, year_range):
-    if df.empty or 'Entity' not in df.columns or 'Year' not in df.columns:
-        return html.Div("Нет данных для отображения")
-
     filtered_df = df[(df['Entity'].isin(selected_countries)) & 
                      (df['Year'].between(year_range[0], year_range[1]))]
     
-    avg_internet_users = filtered_df['Internet_Users_Percent'].mean() if 'Internet_Users_Percent' in filtered_df.columns else 0
-    avg_mobile_subs = filtered_df['Cellular_Subscription'].mean() if 'Cellular_Subscription' in filtered_df.columns else 0
-    avg_broadband_subs = filtered_df['Broadband_Subscription'].mean() if 'Broadband_Subscription' in filtered_df.columns else 0
+    avg_internet_users = filtered_df['Internet_Users_Percent'].mean()
+    avg_mobile_subs = filtered_df['Cellular_Subscription'].mean()
+    avg_broadband_subs = filtered_df['Broadband_Subscription'].mean()
     
     return html.Div([
         html.H4("Сводная статистика", style={'color': colors['card_background'], 'marginBottom': '10px'}),
@@ -177,9 +257,6 @@ def update_content(*args):
     selected_countries = args[-2]
     year_range = args[-1]
     
-    if df.empty or 'Entity' not in df.columns or 'Year' not in df.columns:
-        return html.Div("Нет данных для отображения")
-
     filtered_df = df[(df['Entity'].isin(selected_countries)) & 
                      (df['Year'].between(year_range[0], year_range[1]))]
 
@@ -224,8 +301,7 @@ def update_content(*args):
         fig = px.histogram(filtered_df, x='Year', y='Internet_Users_Percent', color='Entity', 
                            title='Рост интернет-пользователей по годам', barmode='group')
         description = "Гистограмма, отображающая рост числа интернет-пользователей по годам."
-    
-    fig.update_layout(layout)
+        fig.update_layout(layout)
     
     return [
         dcc.Graph(figure=fig, config={'displayModeBar': False}),
@@ -282,17 +358,5 @@ def update_menu_item_style(dark_theme):
     else:
         return [{'backgroundColor': colors['tertiary'], 'color': colors['text']}] * 7
 
-@app.callback(
-    Output('df-store', 'data'),
-    [Input('refresh-button', 'n_clicks')]
-)
-def refresh_data(n_clicks):
-    if n_clicks is None:
-        raise dash.exceptions.PreventUpdate
-    df = get_data_from_db()
-    return df.to_json(date_format='iso', orient='split')
-
 if __name__ == '__main__':
     app.run_server(debug=True)
-
-server = app.server
