@@ -9,11 +9,15 @@ from dash_iconify import DashIconify
 import dash_daq as daq
 
 def get_data_from_db():
-    conn = duckdb.connect('my.db')
-    query = "SELECT * FROM Final_cleaned"
-    df = conn.execute(query).fetchdf()
-    conn.close()
-    return df
+    try:
+        conn = duckdb.connect('Final_cleaned.db')
+        query = "SELECT * FROM Final_cleaned"
+        df = conn.execute(query).fetchdf()
+        conn.close()
+        return df
+    except duckdb.CatalogException as e:
+        print(f"Ошибка при доступе к базе данных: {e}")
+        return pd.DataFrame(columns=['Entity', 'Year', 'Internet_Users_Percent', 'Cellular_Subscription', 'Broadband_Subscription'])
 
 app = dash.Dash(__name__, external_stylesheets=[
     'https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600&display=swap'
@@ -23,7 +27,7 @@ df = get_data_from_db()
 df['Year'] = df['Year'].astype(int)
 
 colors = {
-    'background': '#E6F3FF',  # Светло-голубой фон
+    'background': '#E6F3FF',
     'card_background': '#FFFFFF',
     'text': '#1D1D1F',
     'primary': '#0071E3',
@@ -301,7 +305,8 @@ def update_content(*args):
         fig = px.histogram(filtered_df, x='Year', y='Internet_Users_Percent', color='Entity', 
                            title='Рост интернет-пользователей по годам', barmode='group')
         description = "Гистограмма, отображающая рост числа интернет-пользователей по годам."
-        fig.update_layout(layout)
+    
+    fig.update_layout(layout)
     
     return [
         dcc.Graph(figure=fig, config={'displayModeBar': False}),
@@ -358,7 +363,17 @@ def update_menu_item_style(dark_theme):
     else:
         return [{'backgroundColor': colors['tertiary'], 'color': colors['text']}] * 7
 
+@app.callback(
+    Output('df-store', 'data'),
+    [Input('refresh-button', 'n_clicks')]
+)
+def refresh_data(n_clicks):
+    if n_clicks is None:
+        raise dash.exceptions.PreventUpdate
+    return get_data_from_db().to_json(date_format='iso', orient='split')
+
 if __name__ == '__main__':
     app.run_server(debug=True)
 
 server = app.server
+    
