@@ -8,7 +8,6 @@ import duckdb
 from dash_iconify import DashIconify
 import dash_daq as daq
 
-# Функция для получения данных из базы данных
 def get_data_from_db():
     conn = duckdb.connect('my.db')
     query = "SELECT * FROM Final_cleaned"
@@ -16,20 +15,15 @@ def get_data_from_db():
     conn.close()
     return df
 
-# Создание экземпляра Dash
 app = dash.Dash(__name__, external_stylesheets=[
     'https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600&display=swap'
 ])
 
-# Загрузка данных
 df = get_data_from_db()
-
-# Преобразование типов данных
 df['Year'] = df['Year'].astype(int)
 
-# Цветовая схема в стиле Apple
 colors = {
-    'background': '#F5F5F7',
+    'background': '#E6F3FF',  # Светло-голубой фон
     'card_background': '#FFFFFF',
     'text': '#1D1D1F',
     'primary': '#0071E3',
@@ -38,7 +32,16 @@ colors = {
     'accent': '#FF3B30'
 }
 
-# Определение стилей
+dark_colors = {
+    'background': '#1C1C1E',
+    'card_background': '#2C2C2E',
+    'text': '#FFFFFF',
+    'primary': '#0A84FF',
+    'secondary': '#86868B',
+    'tertiary': '#3A3A3C',
+    'accent': '#FF453A'
+}
+
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -147,7 +150,6 @@ app.index_string = '''
 </html>
 '''
 
-# Обновленный макет приложения
 app.layout = html.Div([
     html.Div([
         html.H1("Глобальные телекоммуникационные тренды", 
@@ -167,15 +169,17 @@ app.layout = html.Div([
             
             html.Div([
                 html.Label("Выберите диапазон лет:", style={'marginBottom': '10px', 'fontWeight': '500'}),
-                dcc.RangeSlider(
-                    id='year-slider',
-                    min=df['Year'].min(),
-                    max=df['Year'].max(),
-                    value=[2000, df['Year'].max()],
-                    marks={str(year): str(year) for year in range(df['Year'].min(), df['Year'].max()+1, 5)},
-                    step=None,
-                    className='range-slider'
-                ),
+                html.Div([
+                    dcc.RangeSlider(
+                        id='year-slider',
+                        min=df['Year'].min(),
+                        max=df['Year'].max(),
+                        value=[2000, df['Year'].max()],
+                        marks={str(year): str(year) for year in range(df['Year'].min(), df['Year'].max()+1, 5)},
+                        step=None,
+                        className='range-slider'
+                    ),
+                ], id='year-slider-container'),
             ], style={'width': '48%', 'display': 'inline-block', 'float': 'right'})
         ], style={'marginBottom': '30px'}),
         
@@ -215,7 +219,7 @@ app.layout = html.Div([
             style={'margin': '20px 0'}
         )
     ], className='container')
-])
+], id='main-container')
 
 @app.callback(
     Output('summary-stats', 'children'),
@@ -239,9 +243,9 @@ def update_summary_stats(selected_countries, year_range):
 
 @app.callback(
     Output('tab-content', 'children'),
-    [Input(f'tab-{i}', 'n_clicks') for i in range(1, 8)],
-    [State('country-dropdown', 'value'),
-     State('year-slider', 'value')]
+    [Input(f'tab-{i}', 'n_clicks') for i in range(1, 8)] +
+    [Input('country-dropdown', 'value'),
+     Input('year-slider', 'value')]
 )
 def update_content(*args):
     ctx = dash.callback_context
@@ -257,7 +261,7 @@ def update_content(*args):
                      (df['Year'].between(year_range[0], year_range[1]))]
 
     layout = go.Layout(
-        plot_bgcolor=colors['background'],
+        plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         font=dict(family='"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif', color=colors['text']),
         margin=dict(l=40, r=40, t=40, b=40),
@@ -297,8 +301,7 @@ def update_content(*args):
         fig = px.histogram(filtered_df, x='Year', y='Internet_Users_Percent', color='Entity', 
                            title='Рост интернет-пользователей по годам', barmode='group')
         description = "Гистограмма, отображающая рост числа интернет-пользователей по годам."
-    
-    fig.update_layout(layout)
+        fig.update_layout(layout)
     
     return [
         dcc.Graph(figure=fig, config={'displayModeBar': False}),
@@ -306,19 +309,13 @@ def update_content(*args):
     ]
 
 @app.callback(
-    [Output('body', 'style'),
-     Output('card', 'style'),
-     Output('button', 'style')],
+    [Output('main-container', 'style'),
+     Output('tab-content', 'style'),
+     Output('refresh-button', 'style')],
     [Input('theme-switch', 'value')]
 )
 def update_theme(dark_theme):
     if dark_theme:
-        dark_colors = {
-            'background': '#000000',
-            'card_background': '#1C1C1E',
-            'text': '#FFFFFF',
-            'primary': '#0A84FF'
-        }
         return [
             {'backgroundColor': dark_colors['background'], 'color': dark_colors['text']},
             {'backgroundColor': dark_colors['card_background']},
@@ -330,6 +327,36 @@ def update_theme(dark_theme):
             {'backgroundColor': colors['card_background']},
             {'backgroundColor': colors['primary'], 'color': colors['card_background']}
         ]
+
+@app.callback(
+    Output('country-dropdown', 'style'),
+    [Input('theme-switch', 'value')]
+)
+def update_dropdown_style(dark_theme):
+    if dark_theme:
+        return {'backgroundColor': dark_colors['card_background'], 'color': dark_colors['text']}
+    else:
+        return {'backgroundColor': colors['card_background'], 'color': colors['text']}
+
+@app.callback(
+    Output('year-slider-container', 'style'),
+    [Input('theme-switch', 'value')]
+)
+def update_slider_container_style(dark_theme):
+    if dark_theme:
+        return {'backgroundColor': dark_colors['card_background'], 'padding': '10px', 'borderRadius': '8px'}
+    else:
+        return {'backgroundColor': colors['card_background'], 'padding': '10px', 'borderRadius': '8px'}
+
+@app.callback(
+    [Output(f'tab-{i}', 'style') for i in range(1, 8)],
+    [Input('theme-switch', 'value')]
+)
+def update_menu_item_style(dark_theme):
+    if dark_theme:
+        return [{'backgroundColor': dark_colors['tertiary'], 'color': dark_colors['text']}] * 7
+    else:
+        return [{'backgroundColor': colors['tertiary'], 'color': colors['text']}] * 7
 
 if __name__ == '__main__':
     app.run_server(debug=True)
