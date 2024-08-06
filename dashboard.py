@@ -6,8 +6,8 @@ import plotly.graph_objs as go
 import pandas as pd
 import duckdb
 from dash_iconify import DashIconify
-import dash_daq as daq
 
+# Функция для получения данных из базы данных
 def get_data_from_db():
     conn = duckdb.connect('my.db')
     query = "SELECT * FROM Final_cleaned"
@@ -15,33 +15,29 @@ def get_data_from_db():
     conn.close()
     return df
 
+# Создание экземпляра Dash
 app = dash.Dash(__name__, external_stylesheets=[
     'https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600&display=swap'
 ])
 
+# Загрузка данных
 df = get_data_from_db()
+
+# Преобразование типов данных для удобства работы с дашбордом
 df['Year'] = df['Year'].astype(int)
 
+# Обновленная цветовая схема
 colors = {
-    'background': '#E6F3FF',  # Светло-голубой фон
+    'background': '#E8F1F5',
     'card_background': '#FFFFFF',
     'text': '#1D1D1F',
-    'primary': '#0071E3',
+    'primary': '#005BBF',
     'secondary': '#86868B',
-    'tertiary': '#E8E8ED',
-    'accent': '#FF3B30'
+    'tertiary': '#B3D4E5',
+    'accent': '#FF9500'
 }
 
-dark_colors = {
-    'background': '#1C1C1E',
-    'card_background': '#2C2C2E',
-    'text': '#FFFFFF',
-    'primary': '#0A84FF',
-    'secondary': '#86868B',
-    'tertiary': '#3A3A3C',
-    'accent': '#FF453A'
-}
-
+# Определение стилей
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -57,7 +53,6 @@ app.index_string = '''
                 color: ''' + colors['text'] + ''';
                 margin: 0;
                 padding: 20px;
-                transition: all 0.3s ease;
             }
             .container {
                 max-width: 1200px;
@@ -69,10 +64,10 @@ app.index_string = '''
                 padding: 20px;
                 margin-bottom: 20px;
                 box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                transition: all 0.3s ease;
+                transition: box-shadow 0.3s ease-in-out, transform 0.3s ease-in-out;
             }
             .card:hover {
-                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
                 transform: translateY(-5px);
             }
             .menu-item {
@@ -82,31 +77,31 @@ app.index_string = '''
                 border-radius: 8px;
                 margin-right: 10px;
                 cursor: pointer;
-                transition: all 0.3s ease;
+                transition: background-color 0.3s, color 0.3s, transform 0.3s;
             }
             .menu-item:hover, .menu-item.active {
                 background-color: ''' + colors['primary'] + ''';
-                color: ''' + colors['card_background'] + ''';
+                color: white;
                 transform: translateY(-2px);
             }
             .button {
                 background-color: ''' + colors['primary'] + ''';
-                color: ''' + colors['card_background'] + ''';
+                color: white;
                 border: none;
                 padding: 10px 20px;
                 border-radius: 20px;
                 font-weight: 500;
                 cursor: pointer;
-                transition: all 0.3s ease;
+                transition: background-color 0.3s, transform 0.3s;
             }
             .button:hover {
-                background-color: ''' + colors['accent'] + ''';
+                background-color: #004999;
                 transform: translateY(-2px);
             }
             .dropdown .Select-control {
                 border: 1px solid ''' + colors['tertiary'] + ''';
                 border-radius: 8px;
-                transition: all 0.3s ease;
+                transition: box-shadow 0.3s;
             }
             .dropdown .Select-control:hover {
                 box-shadow: 0 0 0 2px ''' + colors['primary'] + ''';
@@ -116,20 +111,39 @@ app.index_string = '''
             }
             .range-slider .rc-slider-handle {
                 border-color: ''' + colors['primary'] + ''';
-                background-color: ''' + colors['card_background'] + ''';
+            }
+            .tooltip {
+                position: relative;
+                display: inline-block;
+                cursor: pointer;
+            }
+            .tooltip .tooltiptext {
+                visibility: hidden;
+                width: 200px;
+                background-color: ''' + colors['text'] + ''';
+                color: ''' + colors['card_background'] + ''';
+                text-align: center;
+                border-radius: 6px;
+                padding: 5px;
+                position: absolute;
+                z-index: 1;
+                bottom: 125%;
+                left: 50%;
+                margin-left: -100px;
+                opacity: 0;
+                transition: opacity 0.3s;
+            }
+            .tooltip:hover .tooltiptext {
+                visibility: visible;
+                opacity: 1;
             }
             .summary-card {
-                background-color: ''' + colors['primary'] + ''';
-                color: ''' + colors['card_background'] + ''';
+                background-color: ''' + colors['accent'] + ''';
+                color: white;
                 padding: 15px;
                 border-radius: 8px;
                 margin-bottom: 20px;
                 box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                transition: all 0.3s ease;
-            }
-            .summary-card:hover {
-                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-                transform: translateY(-5px);
             }
             .authors {
                 text-align: center;
@@ -150,10 +164,11 @@ app.index_string = '''
 </html>
 '''
 
+# Обновленный макет приложения
 app.layout = html.Div([
     html.Div([
         html.H1("Глобальные телекоммуникационные тренды", 
-                style={'textAlign': 'center', 'fontSize': '32px', 'fontWeight': '600', 'marginBottom': '30px', 'color': colors['text']}),
+                style={'textAlign': 'center', 'fontSize': '32px', 'fontWeight': '600', 'marginBottom': '30px'}),
         
         html.Div([
             html.Div([
@@ -169,17 +184,15 @@ app.layout = html.Div([
             
             html.Div([
                 html.Label("Выберите диапазон лет:", style={'marginBottom': '10px', 'fontWeight': '500'}),
-                html.Div([
-                    dcc.RangeSlider(
-                        id='year-slider',
-                        min=df['Year'].min(),
-                        max=df['Year'].max(),
-                        value=[2000, df['Year'].max()],
-                        marks={str(year): str(year) for year in range(df['Year'].min(), df['Year'].max()+1, 5)},
-                        step=None,
-                        className='range-slider'
-                    ),
-                ], id='year-slider-container'),
+                dcc.RangeSlider(
+                    id='year-slider',
+                    min=df['Year'].min(),
+                    max=df['Year'].max(),
+                    value=[2000, df['Year'].max()],
+                    marks={str(year): str(year) for year in range(df['Year'].min(), df['Year'].max()+1, 5)},
+                    step=None,
+                    className='range-slider'
+                ),
             ], style={'width': '48%', 'display': 'inline-block', 'float': 'right'})
         ], style={'marginBottom': '30px'}),
         
@@ -200,26 +213,14 @@ app.layout = html.Div([
         html.Div([
             html.Button("Обновить данные", id='refresh-button', className='button'),
             html.Div([
-                DashIconify(icon="mdi:information", width=20, height=20, style={'marginLeft': '10px', 'verticalAlign': 'middle', 'color': colors['secondary']}),
-                html.Span("Информация о данных", className="tooltiptext")
+                DashIconify(icon="mdi:information", width=20, height=20, style={'marginLeft': '10px', 'verticalAlign': 'middle'}),
+                html.Span("Инфо", className="tooltiptext")
             ], className="tooltip")
         ], style={'textAlign': 'center', 'marginTop': '30px'}),
 
-        html.Div([
-            "Разработано: ",
-            html.Span("Ниёзов Анушервон", style={'color': colors['primary']}),
-            " и ",
-            html.Span("Давронов Мустафо", style={'color': colors['accent']})
-        ], className='authors'),
-
-        daq.ToggleSwitch(
-            id='theme-switch',
-            label='Тёмная тема',
-            value=False,
-            style={'margin': '20px 0'}
-        )
+        html.Div("Авторы: Ниёзов Анушервон и Давронов Мустафо", className='authors')
     ], className='container')
-], id='main-container')
+])
 
 @app.callback(
     Output('summary-stats', 'children'),
@@ -235,17 +236,17 @@ def update_summary_stats(selected_countries, year_range):
     avg_broadband_subs = filtered_df['Broadband_Subscription'].mean()
     
     return html.Div([
-        html.H4("Сводная статистика", style={'color': colors['card_background'], 'marginBottom': '10px'}),
-        html.P(f"Средний процент интернет-пользователей: {avg_internet_users:.2f}%", style={'marginBottom': '5px'}),
-        html.P(f"Среднее количество мобильных подписок: {avg_mobile_subs:.2f}", style={'marginBottom': '5px'}),
+        html.H4("Сводная статистика"),
+        html.P(f"Средний процент интернет-пользователей: {avg_internet_users:.2f}%"),
+        html.P(f"Среднее количество мобильных подписок: {avg_mobile_subs:.2f}"),
         html.P(f"Среднее количество широкополосных подписок: {avg_broadband_subs:.2f}")
     ])
 
 @app.callback(
     Output('tab-content', 'children'),
-    [Input(f'tab-{i}', 'n_clicks') for i in range(1, 8)] +
-    [Input('country-dropdown', 'value'),
-     Input('year-slider', 'value')]
+    [Input(f'tab-{i}', 'n_clicks') for i in range(1, 8)],
+    [State('country-dropdown', 'value'),
+     State('year-slider', 'value')]
 )
 def update_content(*args):
     ctx = dash.callback_context
@@ -260,15 +261,16 @@ def update_content(*args):
     filtered_df = df[(df['Entity'].isin(selected_countries)) & 
                      (df['Year'].between(year_range[0], year_range[1]))]
 
+    # Создаем стильный фон для графиков
     layout = go.Layout(
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(240,240,240,0.8)',  # Светло-серый фон с небольшой прозрачностью
+        paper_bgcolor='rgba(0,0,0,0)',  # Прозрачный фон вокруг графика
         font=dict(family='"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif', color=colors['text']),
         margin=dict(l=40, r=40, t=40, b=40),
         hovermode='closest',
         legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
-        xaxis=dict(showgrid=True, gridcolor='rgba(0,0,0,0.1)', zeroline=False),
-        yaxis=dict(showgrid=True, gridcolor='rgba(0,0,0,0.1)', zeroline=False),
+        xaxis=dict(showgrid=True, gridcolor='rgba(200,200,200,0.4)', zeroline=False),
+        yaxis=dict(showgrid=True, gridcolor='rgba(200,200,200,0.4)', zeroline=False),
     )
 
     if button_id == 'tab-1':
@@ -301,62 +303,32 @@ def update_content(*args):
         fig = px.histogram(filtered_df, x='Year', y='Internet_Users_Percent', color='Entity', 
                            title='Рост интернет-пользователей по годам', barmode='group')
         description = "Гистограмма, отображающая рост числа интернет-пользователей по годам."
-        fig.update_layout(layout)
+    
+    fig.update_layout(layout)
+    
+    # Убираем среднюю линию
+    fig.update_yaxes(zeroline=False)
+    fig.update_xaxes(zeroline=False)
+    
+    # Добавляем градиентный фон
+    fig.add_layout_image(
+        dict(
+            source="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==",
+            xref="paper",
+            yref="paper",
+            x=0,
+            y=1,
+            sizex=1,
+            sizey=1,
+            sizing="stretch",
+            opacity=0.1,
+            layer="below")
+    )
     
     return [
-        dcc.Graph(figure=fig, config={'displayModeBar': False}),
+        dcc.Graph(figure=fig),
         html.P(description, style={'marginTop': '10px', 'fontSize': '14px', 'color': colors['secondary']})
     ]
-
-@app.callback(
-    [Output('main-container', 'style'),
-     Output('tab-content', 'style'),
-     Output('refresh-button', 'style')],
-    [Input('theme-switch', 'value')]
-)
-def update_theme(dark_theme):
-    if dark_theme:
-        return [
-            {'backgroundColor': dark_colors['background'], 'color': dark_colors['text']},
-            {'backgroundColor': dark_colors['card_background']},
-            {'backgroundColor': dark_colors['primary'], 'color': dark_colors['text']}
-        ]
-    else:
-        return [
-            {'backgroundColor': colors['background'], 'color': colors['text']},
-            {'backgroundColor': colors['card_background']},
-            {'backgroundColor': colors['primary'], 'color': colors['card_background']}
-        ]
-
-@app.callback(
-    Output('country-dropdown', 'style'),
-    [Input('theme-switch', 'value')]
-)
-def update_dropdown_style(dark_theme):
-    if dark_theme:
-        return {'backgroundColor': dark_colors['card_background'], 'color': dark_colors['text']}
-    else:
-        return {'backgroundColor': colors['card_background'], 'color': colors['text']}
-
-@app.callback(
-    Output('year-slider-container', 'style'),
-    [Input('theme-switch', 'value')]
-)
-def update_slider_container_style(dark_theme):
-    if dark_theme:
-        return {'backgroundColor': dark_colors['card_background'], 'padding': '10px', 'borderRadius': '8px'}
-    else:
-        return {'backgroundColor': colors['card_background'], 'padding': '10px', 'borderRadius': '8px'}
-
-@app.callback(
-    [Output(f'tab-{i}', 'style') for i in range(1, 8)],
-    [Input('theme-switch', 'value')]
-)
-def update_menu_item_style(dark_theme):
-    if dark_theme:
-        return [{'backgroundColor': dark_colors['tertiary'], 'color': dark_colors['text']}] * 7
-    else:
-        return [{'backgroundColor': colors['tertiary'], 'color': colors['text']}] * 7
 
 if __name__ == '__main__':
     app.run_server(debug=True)
