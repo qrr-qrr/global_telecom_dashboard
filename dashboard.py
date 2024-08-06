@@ -10,10 +10,11 @@ import plotly.express as px
 import plotly.graph_objs as go
 from dash_iconify import DashIconify
 
+# Настройка логирования
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
 # Путь к базе данных
 DB_PATH = 'Final_cleaned.db'
-
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 def initialize_db():
     try:
@@ -29,7 +30,11 @@ def initialize_db():
             logging.info(f"Table 'Final_cleaned' exists and contains {result[0]} rows")
         except duckdb.CatalogException:
             logging.info("Table 'Final_cleaned' does not exist. Creating it.")
-            df = pd.read_csv('source/Final_cleaned.csv')
+            csv_path = 'source/Final_cleaned.csv'
+            if not os.path.exists(csv_path):
+                logging.error(f"CSV file '{csv_path}' not found")
+                raise FileNotFoundError(f"CSV file '{csv_path}' not found")
+            df = pd.read_csv(csv_path)
             conn.execute('CREATE TABLE IF NOT EXISTS Final_cleaned AS SELECT * FROM df')
             logging.info("Table 'Final_cleaned' created and populated")
         
@@ -37,13 +42,7 @@ def initialize_db():
     except Exception as e:
         logging.error(f"Error initializing database: {e}")
         raise
-if not os.path.exists('source/Final_cleaned.csv'):
-    logging.error("CSV file 'source/Final_cleaned.csv' not found")
-    raise FileNotFoundError("CSV file 'source/Final_cleaned.csv' not found")
-# Инициализируем базу данных
-initialize_db()
 
-# Получаем данные
 def get_data_from_db():
     try:
         conn = duckdb.connect(DB_PATH)
@@ -54,6 +53,12 @@ def get_data_from_db():
         logging.error(f"Error getting data from database: {e}")
         raise
 
+# Инициализируем базу данных
+initialize_db()
+
+# Получаем данные
+df = get_data_from_db()
+
 # Преобразование типов данных для удобства работы с дашбордом
 df['Year'] = df['Year'].astype(int)
 
@@ -61,11 +66,19 @@ df['Year'] = df['Year'].astype(int)
 app = dash.Dash(__name__, external_stylesheets=[
     'https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600&display=swap'
 ], suppress_callback_exceptions=True)
-server = app.server
 
 server = app.server  # Для Gunicorn
 
 # Обновленная цветовая схема
+colors = {
+    'background': '#E8F1F5',
+    'card_background': '#FFFFFF',
+    'text': '#1D1D1F',
+    'primary': '#005BBF',
+    'secondary': '#86868B',
+    'tertiary': '#B3D4E5',
+    'accent': '#FF9500'
+}
 colors = {
     'background': '#E8F1F5',
     'card_background': '#FFFFFF',
