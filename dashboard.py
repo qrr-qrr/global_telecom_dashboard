@@ -11,31 +11,53 @@ from dash_iconify import DashIconify
 # Путь к базе данных
 DB_PATH = 'Final_cleaned.db'
 
-def initialize_db():
-    if not os.path.exists(DB_PATH):
-        print("Creating new database")
-    else:
-        print("Database file exists, checking for table")
-    
-    conn = duckdb.connect(DB_PATH)
-    
-    try:
-        # Проверяем существование таблицы
-        result = conn.execute("SELECT COUNT(*) FROM Final_cleaned").fetchone()
-        print(f"Table 'Final_cleaned' exists and contains {result[0]} rows")
-    except duckdb.CatalogException:
-        print("Table 'Final_cleaned' does not exist. Creating it.")
-        df = pd.read_csv('source/Final_cleaned.csv')
-        conn.execute('CREATE TABLE Final_cleaned AS SELECT * FROM df')
-        print("Table 'Final_cleaned' created and populated")
-    
-    conn.close()
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
-def get_data_from_db():
-    conn = duckdb.connect(DB_PATH)
-    df = conn.execute("SELECT * FROM Final_cleaned").fetchdf()
-    conn.close()
-    return df
+def initialize_db():
+    try:
+        if not os.path.exists(DB_PATH):
+            logging.info("Creating new database")
+        else:
+            logging.info("Database file exists, checking for table")
+    
+        conn = duckdb.connect(DB_PATH)
+    
+        try:
+            result = conn.execute("SELECT COUNT(*) FROM Final_cleaned").fetchone()
+            logging.info(f"Table 'Final_cleaned' exists and contains {result[0]} rows")
+        except duckdb.CatalogException:
+            logging.info("Table 'Final_cleaned' does not exist. Creating it.")
+            df = pd.read_csv('source/Final_cleaned.csv')
+            conn.execute('CREATE TABLE IF NOT EXISTS Final_cleaned AS SELECT * FROM df')
+            logging.info("Table 'Final_cleaned' created and populated")
+    
+        conn.close()
+    except Exception as e:
+        logging.error(f"Error initializing database: {e}")
+        raise
+
+def initialize_db():
+    try:
+        if not os.path.exists(DB_PATH):
+            logging.info("Creating new database")
+        else:
+            logging.info("Database file exists, checking for table")
+    
+        conn = duckdb.connect(DB_PATH)
+    
+        try:
+            result = conn.execute("SELECT COUNT(*) FROM Final_cleaned").fetchone()
+            logging.info(f"Table 'Final_cleaned' exists and contains {result[0]} rows")
+        except duckdb.CatalogException:
+            logging.info("Table 'Final_cleaned' does not exist. Creating it.")
+            df = pd.read_csv('source/Final_cleaned.csv')
+            conn.execute('CREATE TABLE IF NOT EXISTS Final_cleaned AS SELECT * FROM df')
+            logging.info("Table 'Final_cleaned' created and populated")
+    
+        conn.close()
+    except Exception as e:
+        logging.error(f"Error initializing database: {e}")
+        raise
 
 # Инициализируем базу данных
 initialize_db()
@@ -49,7 +71,8 @@ df['Year'] = df['Year'].astype(int)
 # Создание экземпляра Dash
 app = dash.Dash(__name__, external_stylesheets=[
     'https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600&display=swap'
-])
+], suppress_callback_exceptions=True)
+server = app.server
 
 server = app.server  # Для Gunicorn
 
