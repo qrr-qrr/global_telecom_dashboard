@@ -7,27 +7,6 @@ import pandas as pd
 import duckdb
 from dash_iconify import DashIconify
 
-
-
-def initialize_db():
-    if not os.path.exists('Final_cleaned.db'):
-        conn = duckdb.connect('Final_cleaned.db')
-        df = pd.read_csv('source/Final_cleaned.csv')
-        conn.execute('CREATE TABLE Final_cleaned AS SELECT * FROM df')
-        conn.close()
-        print("Database initialized")
-    else:
-        print("Database already exists")
-
-def get_data_from_db():
-    initialize_db()  # Вызываем эту функцию перед попыткой получить данные
-    conn = duckdb.connect('Final_cleaned.db')
-    query = "SELECT * FROM Final_cleaned"
-    df = conn.execute(query).fetchdf()
-    conn.close()
-    return df
-
-
 # Функция для получения данных из базы данных
 def get_data_from_db():
     conn = duckdb.connect('my.db')
