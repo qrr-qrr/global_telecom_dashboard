@@ -1,4 +1,6 @@
 import os
+import sys
+import logging
 import duckdb
 import pandas as pd
 import dash
@@ -19,9 +21,9 @@ def initialize_db():
             logging.info("Creating new database")
         else:
             logging.info("Database file exists, checking for table")
-    
+        
         conn = duckdb.connect(DB_PATH)
-    
+        
         try:
             result = conn.execute("SELECT COUNT(*) FROM Final_cleaned").fetchone()
             logging.info(f"Table 'Final_cleaned' exists and contains {result[0]} rows")
@@ -30,40 +32,27 @@ def initialize_db():
             df = pd.read_csv('source/Final_cleaned.csv')
             conn.execute('CREATE TABLE IF NOT EXISTS Final_cleaned AS SELECT * FROM df')
             logging.info("Table 'Final_cleaned' created and populated")
-    
+        
         conn.close()
     except Exception as e:
         logging.error(f"Error initializing database: {e}")
         raise
-
-def initialize_db():
-    try:
-        if not os.path.exists(DB_PATH):
-            logging.info("Creating new database")
-        else:
-            logging.info("Database file exists, checking for table")
-    
-        conn = duckdb.connect(DB_PATH)
-    
-        try:
-            result = conn.execute("SELECT COUNT(*) FROM Final_cleaned").fetchone()
-            logging.info(f"Table 'Final_cleaned' exists and contains {result[0]} rows")
-        except duckdb.CatalogException:
-            logging.info("Table 'Final_cleaned' does not exist. Creating it.")
-            df = pd.read_csv('source/Final_cleaned.csv')
-            conn.execute('CREATE TABLE IF NOT EXISTS Final_cleaned AS SELECT * FROM df')
-            logging.info("Table 'Final_cleaned' created and populated")
-    
-        conn.close()
-    except Exception as e:
-        logging.error(f"Error initializing database: {e}")
-        raise
-
+if not os.path.exists('source/Final_cleaned.csv'):
+    logging.error("CSV file 'source/Final_cleaned.csv' not found")
+    raise FileNotFoundError("CSV file 'source/Final_cleaned.csv' not found")
 # Инициализируем базу данных
 initialize_db()
 
 # Получаем данные
-df = get_data_from_db()
+def get_data_from_db():
+    try:
+        conn = duckdb.connect(DB_PATH)
+        df = conn.execute("SELECT * FROM Final_cleaned").fetchdf()
+        conn.close()
+        return df
+    except Exception as e:
+        logging.error(f"Error getting data from database: {e}")
+        raise
 
 # Преобразование типов данных для удобства работы с дашбордом
 df['Year'] = df['Year'].astype(int)
