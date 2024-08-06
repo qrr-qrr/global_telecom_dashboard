@@ -1,30 +1,57 @@
+import os
+import duckdb
+import pandas as pd
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
 import plotly.express as px
 import plotly.graph_objs as go
-import pandas as pd
-import duckdb
 from dash_iconify import DashIconify
 
-# Функция для получения данных из базы данных
+# Путь к базе данных
+DB_PATH = 'Final_cleaned.db'
+
+def initialize_db():
+    if not os.path.exists(DB_PATH):
+        print("Creating new database")
+    else:
+        print("Database file exists, checking for table")
+    
+    conn = duckdb.connect(DB_PATH)
+    
+    try:
+        # Проверяем существование таблицы
+        result = conn.execute("SELECT COUNT(*) FROM Final_cleaned").fetchone()
+        print(f"Table 'Final_cleaned' exists and contains {result[0]} rows")
+    except duckdb.CatalogException:
+        print("Table 'Final_cleaned' does not exist. Creating it.")
+        df = pd.read_csv('source/Final_cleaned.csv')
+        conn.execute('CREATE TABLE Final_cleaned AS SELECT * FROM df')
+        print("Table 'Final_cleaned' created and populated")
+    
+    conn.close()
+
 def get_data_from_db():
-    conn = duckdb.connect('my.db')
-    query = "SELECT * FROM Final_cleaned"
-    df = conn.execute(query).fetchdf()
+    conn = duckdb.connect(DB_PATH)
+    df = conn.execute("SELECT * FROM Final_cleaned").fetchdf()
     conn.close()
     return df
+
+# Инициализируем базу данных
+initialize_db()
+
+# Получаем данные
+df = get_data_from_db()
+
+# Преобразование типов данных для удобства работы с дашбордом
+df['Year'] = df['Year'].astype(int)
 
 # Создание экземпляра Dash
 app = dash.Dash(__name__, external_stylesheets=[
     'https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600&display=swap'
 ])
 
-# Загрузка данных
-df = get_data_from_db()
-
-# Преобразование типов данных для удобства работы с дашбордом
-df['Year'] = df['Year'].astype(int)
+server = app.server  # Для Gunicorn
 
 # Обновленная цветовая схема
 colors = {
@@ -36,8 +63,6 @@ colors = {
     'tertiary': '#B3D4E5',
     'accent': '#FF9500'
 }
-
-# Определение стилей
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -263,8 +288,8 @@ def update_content(*args):
 
     # Создаем стильный фон для графиков
     layout = go.Layout(
-        plot_bgcolor='rgba(240,240,240,0.8)',  # Светло-серый фон с небольшой прозрачностью
-        paper_bgcolor='rgba(0,0,0,0)',  # Прозрачный фон вокруг графика
+        plot_bgcolor='rgba(240,240,240,0.8)',
+        paper_bgcolor='rgba(0,0,0,0)',
         font=dict(family='"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif', color=colors['text']),
         margin=dict(l=40, r=40, t=40, b=40),
         hovermode='closest',
