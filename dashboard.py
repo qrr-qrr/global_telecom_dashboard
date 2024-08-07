@@ -10,10 +10,10 @@ import plotly.express as px
 import plotly.graph_objs as go
 from dash_iconify import DashIconify
 
-# Настройка логирования
+
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
-# Путь к базе данных
+
 DB_PATH = 'Final_cleaned.db'
 
 def initialize_db():
@@ -53,23 +53,22 @@ def get_data_from_db():
         logging.error(f"Error getting data from database: {e}")
         raise
 
-# Инициализируем базу данных
+
 initialize_db()
 
-# Получаем данные
+
 df = get_data_from_db()
 
-# Преобразование типов данных для удобства работы с дашбордом
 df['Year'] = df['Year'].astype(int)
 
-# Создание экземпляра Dash
+
 app = dash.Dash(__name__, external_stylesheets=[
     'https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600&display=swap'
 ], suppress_callback_exceptions=True)
 
 server = app.server  # Для Gunicorn
 
-# Обновленная цветовая схема
+
 colors = {
     'background': '#E8F1F5',
     'card_background': '#FFFFFF',
@@ -214,7 +213,7 @@ app.index_string = '''
 </html>
 '''
 
-# Обновленный макет приложения
+
 app.layout = html.Div([
     html.Div([
         html.H1("Глобальные телекоммуникационные тренды", 
@@ -311,7 +310,6 @@ def update_content(*args):
     filtered_df = df[(df['Entity'].isin(selected_countries)) & 
                      (df['Year'].between(year_range[0], year_range[1]))]
 
-    # Создаем стильный фон для графиков
     layout = go.Layout(
         plot_bgcolor='rgba(240,240,240,0.8)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -356,11 +354,9 @@ def update_content(*args):
     
     fig.update_layout(layout)
     
-    # Убираем среднюю линию
     fig.update_yaxes(zeroline=False)
     fig.update_xaxes(zeroline=False)
     
-    # Добавляем градиентный фон
     fig.add_layout_image(
         dict(
             source="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==",
