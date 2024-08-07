@@ -10,18 +10,15 @@ import plotly.express as px
 import plotly.graph_objs as go
 from dash_iconify import DashIconify
 
-
+# Настройка логирования
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
-
-DB_PATH = 'Final_cleaned.db'
+# Путь к базе данных
+DB_PATH = 'my.db'
 
 def initialize_db():
     try:
-        if not os.path.exists(DB_PATH):
-            logging.info("Creating new database")
-        else:
-            logging.info("Database file exists, checking for table")
+        logging.info("Database file exists, checking for table")
         
         conn = duckdb.connect(DB_PATH)
         
@@ -30,12 +27,12 @@ def initialize_db():
             logging.info(f"Table 'Final_cleaned' exists and contains {result[0]} rows")
         except duckdb.CatalogException:
             logging.info("Table 'Final_cleaned' does not exist. Creating it.")
-            csv_path = 'source/Final_cleaned.csv'
+            csv_path = '/mnt/data/final_db.csv'
             if not os.path.exists(csv_path):
                 logging.error(f"CSV file '{csv_path}' not found")
                 raise FileNotFoundError(f"CSV file '{csv_path}' not found")
             df = pd.read_csv(csv_path)
-            conn.execute('CREATE TABLE IF NOT EXISTS Final_cleaned AS SELECT * FROM df')
+            conn.execute('CREATE TABLE Final_cleaned AS SELECT * FROM df')
             logging.info("Table 'Final_cleaned' created and populated")
         
         conn.close()
@@ -53,40 +50,33 @@ def get_data_from_db():
         logging.error(f"Error getting data from database: {e}")
         raise
 
-
+# Инициализируем базу данных
 initialize_db()
 
-
+# Получаем данные
 df = get_data_from_db()
 
+# Преобразование типов данных для удобства работы с дашбордом
 df['Year'] = df['Year'].astype(int)
 
-
+# Создание экземпляра Dash
 app = dash.Dash(__name__, external_stylesheets=[
     'https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600&display=swap'
 ], suppress_callback_exceptions=True)
 
 server = app.server  # Для Gunicorn
 
+# Обновленная цветовая схема
+colors = {
+    'background': '#121212',
+    'card_background': '#1E1E1E',
+    'text': '#E0E0E0',
+    'primary': '#BB86FC',
+    'secondary': '#03DAC6',
+    'tertiary': '#3700B3',
+    'accent': '#CF6679'
+}
 
-colors = {
-    'background': '#E8F1F5',
-    'card_background': '#FFFFFF',
-    'text': '#1D1D1F',
-    'primary': '#005BBF',
-    'secondary': '#86868B',
-    'tertiary': '#B3D4E5',
-    'accent': '#FF9500'
-}
-colors = {
-    'background': '#E8F1F5',
-    'card_background': '#FFFFFF',
-    'text': '#1D1D1F',
-    'primary': '#005BBF',
-    'secondary': '#86868B',
-    'tertiary': '#B3D4E5',
-    'accent': '#FF9500'
-}
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -144,7 +134,7 @@ app.index_string = '''
                 transition: background-color 0.3s, transform 0.3s;
             }
             .button:hover {
-                background-color: #004999;
+                background-color: #3700B3;
                 transform: translateY(-2px);
             }
             .dropdown .Select-control {
@@ -213,7 +203,7 @@ app.index_string = '''
 </html>
 '''
 
-
+# Обновленный макет приложения
 app.layout = html.Div([
     html.Div([
         html.H1("Глобальные телекоммуникационные тренды", 
@@ -248,13 +238,16 @@ app.layout = html.Div([
         html.Div(id='summary-stats', className='summary-card'),
         
         html.Div([
-            html.Div("Цифровой разрыв", id='tab-1', className='menu-item', n_clicks=0),
-            html.Div("Рост интернета", id='tab-2', className='menu-item', n_clicks=0),
-            html.Div("Мобильная связь vs ШПД", id='tab-3', className='menu-item', n_clicks=0),
-            html.Div("Телеком тренды", id='tab-4', className='menu-item', n_clicks=0),
-            html.Div("Карта пользователей", id='tab-5', className='menu-item', n_clicks=0),
-            html.Div("Сравнение связи", id='tab-6', className='menu-item', n_clicks=0),
-            html.Div("Рост пользователей", id='tab-7', className='menu-item', n_clicks=0),
+            html.Div("Географическое распределение пользователей интернета", id='tab-1', className='menu-item', n_clicks=0),
+            html.Div("Сравнение городского и сельского населения", id='tab-2', className='menu-item', n_clicks=0),
+            html.Div("Сравнение скорости интернета", id='tab-3', className='menu-item', n_clicks=0),
+            html.Div("Анализ затрат на интернет", id='tab-4', className='menu-item', n_clicks=0),
+                        html.Div("Цифровой разрыв", id='tab-5', className='menu-item', n_clicks=0),
+            html.Div("Темпы роста интернет-проникновения", id='tab-6', className='menu-item', n_clicks=0),
+            html.Div("Сравнение мобильной связи и ШПД", id='tab-7', className='menu-item', n_clicks=0),
+            html.Div("Телекоммуникационные тренды", id='tab-8', className='menu-item', n_clicks=0),
+            html.Div("Рост пользователей интернета по годам", id='tab-9', className='menu-item', n_clicks=0),
+            html.Div("Сравнение мобильной связи и ШПД по странам", id='tab-10', className='menu-item', n_clicks=0),
         ], style={'display': 'flex', 'justifyContent': 'space-between', 'marginBottom': '20px'}),
         
         html.Div(id='tab-content', className='card'),
@@ -293,7 +286,7 @@ def update_summary_stats(selected_countries, year_range):
 
 @app.callback(
     Output('tab-content', 'children'),
-    [Input(f'tab-{i}', 'n_clicks') for i in range(1, 8)],
+    [Input(f'tab-{i}', 'n_clicks') for i in range(1, 11)],
     [State('country-dropdown', 'value'),
      State('year-slider', 'value')]
 )
@@ -310,9 +303,10 @@ def update_content(*args):
     filtered_df = df[(df['Entity'].isin(selected_countries)) & 
                      (df['Year'].between(year_range[0], year_range[1]))]
 
+    # Создаем стильный фон для графиков
     layout = go.Layout(
-        plot_bgcolor='rgba(240,240,240,0.8)',
-        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor=colors['card_background'],
+        paper_bgcolor=colors['background'],
         font=dict(family='"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif', color=colors['text']),
         margin=dict(l=40, r=40, t=40, b=40),
         hovermode='closest',
@@ -322,54 +316,68 @@ def update_content(*args):
     )
 
     if button_id == 'tab-1':
+        fig = px.choropleth(filtered_df, locations="Entity", locationmode="country names",
+                            color="Internet_Users_Percent", hover_name="Entity", 
+                            animation_frame="Year", title="Географическое распределение пользователей интернета",
+                            color_continuous_scale=px.colors.sequential.Viridis)
+        description = "Визуализация плотности интернет-пользователей по странам."
+    elif button_id == 'tab-2':
+        fig = px.bar(filtered_df, x='Entity', y='Urban_Rate', color='Entity', 
+                     title='Сравнение городского и сельского населения')
+        description = "Столбчатая диаграмма, показывающая интернет-проникновение в городских и сельских районах."
+    elif button_id == 'tab-3':
+        fig = px.line(filtered_df, x='Entity', y='Avg_Speed_Mbps', color='Entity', 
+                      title='Сравнение скорости интернета')
+        description = "Линейный график, показывающий среднюю скорость интернета в разных странах."
+    elif button_id == 'tab-4':
+        fig = px.bar(filtered_df, x='Entity', y='Avg_Price_1GB', color='Entity', 
+                     title='Анализ затрат на интернет')
+        description = "Столбчатая диаграмма, показывающая среднюю стоимость 1 ГБ интернета в разных странах."
+    elif button_id == 'tab-5':
         fig = px.line(filtered_df, x='Year', y='Internet_Users_Percent', color='Entity', 
                       title='Цифровой разрыв')
         description = "Этот график показывает разницу в доступе к интернету между разными странами с течением времени."
-    elif button_id == 'tab-2':
+    elif button_id == 'tab-6':
         fig = px.line(filtered_df, x='Year', y='Internet_Users_Percent', color='Entity', 
                       title='Темпы роста интернет-проникновения')
         description = "Здесь отображены темпы роста интернет-проникновения в выбранных странах."
-    elif button_id == 'tab-3':
-        fig = px.line(filtered_df, x='Year', y=['Cellular_Subscription', 'Broadband_Subscription'], color='Entity', 
-                      title='Сравнение мобильной связи и широкополосного интернета')
-        description = "Сравнение распространения мобильной связи и широкополосного интернета в выбранных странах."
-    elif button_id == 'tab-4':
+    elif button_id == 'tab-7':
+        fig = go.Figure()
+        for country in filtered_df['Entity'].unique():
+            country_df = filtered_df[filtered_df['Entity'] == country]
+            fig.add_trace(go.Scatter(
+                x=country_df['Year'],
+                y=country_df['Cellular_Subscription'],
+                mode='lines',
+                name=f'{country} - Мобильная связь'
+            ))
+            fig.add_trace(go.Scatter(
+                x=country_df['Year'],
+                y=country_df['Broadband_Subscription'],
+                mode='lines',
+                name=f'{country} - ШПД',
+                line=dict(dash='dash')  # Здесь мы добавляем пунктирную линию для ШПД
+            ))
+        fig.update_layout(title='Сравнение мобильной связи и ШПД',
+                          xaxis_title='Год',
+                          yaxis_title='Подписки',
+                          layout=layout)
+        description = "Сравнение распространения мобильной связи и широкополосного интернета в выбранных странах. Линия для ШПД сделана пунктирной."
+
+    elif button_id == 'tab-8':
         fig = px.line(filtered_df, x='Year', y='Broadband_Subscription', color='Entity', 
                       title='Телекоммуникационные тренды')
         description = "Общие тенденции в телекоммуникационном секторе для выбранных стран."
-    elif button_id == 'tab-5':
-        fig = px.choropleth(filtered_df, locations="Entity", locationmode="country names",
-                            color="Internet_Users_Percent", hover_name="Entity", 
-                            animation_frame="Year", title="Процент пользователей интернета по странам",
-                            color_continuous_scale=px.colors.sequential.Viridis)
-        description = "Визуализация процента пользователей интернета по странам на карте мира."
-    elif button_id == 'tab-6':
-        fig = px.pie(filtered_df, values='Cellular_Subscription', names='Entity', 
-                     title='Сравнение мобильной связи и широкополосного интернета')
-        description = "Круговая диаграмма, показывающая соотношение мобильной связи и широкополосного доступа."
-    elif button_id == 'tab-7':
+    elif button_id == 'tab-9':
         fig = px.histogram(filtered_df, x='Year', y='Internet_Users_Percent', color='Entity', 
-                           title='Рост интернет-пользователей по годам', barmode='group')
+                           title='Рост пользователей интернета по годам', barmode='group')
         description = "Гистограмма, отображающая рост числа интернет-пользователей по годам."
+    elif button_id == 'tab-10':
+        fig = px.pie(filtered_df, values='Cellular_Subscription', names='Entity', 
+                     title='Сравнение мобильной связи и ШПД по странам')
+        description = "Круговая диаграмма, показывающая соотношение мобильной связи и широкополосного доступа по странам."
     
     fig.update_layout(layout)
-    
-    fig.update_yaxes(zeroline=False)
-    fig.update_xaxes(zeroline=False)
-    
-    fig.add_layout_image(
-        dict(
-            source="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==",
-            xref="paper",
-            yref="paper",
-            x=0,
-            y=1,
-            sizex=1,
-            sizey=1,
-            sizing="stretch",
-            opacity=0.1,
-            layer="below")
-    )
     
     return [
         dcc.Graph(figure=fig),
@@ -379,3 +387,4 @@ def update_content(*args):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8000))
     app.run_server(debug=False, host='0.0.0.0', port=port)
+
